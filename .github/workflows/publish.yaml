@@ -2,7 +2,7 @@ name: publish
 on:
     push:
         branches:
-            - master
+            - main
 permissions:
     packages: write
     contents: read
@@ -25,9 +25,11 @@ jobs:
               with:
                   push: true
                   file: ./python2.Dockerfile
-                  tags: ${{ steps.meta.outputs.tags }}
+                  tags: ghcr.io/superstormer/python2,ghcr.io/superstormer/python2:sha-${{ github.sha }}
                   labels: ${{ steps.meta.outputs.labels }}
                   outputs: type=docker,dest=/tmp/image.tar
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
             - name: Upload artifact
               uses: actions/upload-artifact@v4
               with:
@@ -35,6 +37,7 @@ jobs:
                   path: /tmp/image.tar
     publish-volatility2:
         runs-on: ubuntu-24.04
+        needs: publish-python2
         steps:
             - uses: docker/setup-buildx-action@v3
             - name: Download artifact
@@ -46,7 +49,6 @@ jobs:
             - name: Load image
               run: |
                   docker load --input /tmp/image.tar
-                  docker image ls -a
             - uses: docker/login-action@v3
               with:
                   registry: ghcr.io
@@ -61,5 +63,7 @@ jobs:
               with:
                   push: true
                   file: ./volatility2.Dockerfile
-                  tags: ${{ steps.meta.outputs.tags }}
+                  tags: ghcr.io/superstormer/volatility2,ghcr.io/superstormer/volatility2:sha-${{ github.sha }}
                   labels: ${{ steps.meta.outputs.labels }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
