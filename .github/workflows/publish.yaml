@@ -1,0 +1,65 @@
+name: publish
+on:
+    push:
+        branches:
+            - master
+permissions:
+    packages: write
+    contents: read
+jobs:
+    publish-python2:
+        runs-on: ubuntu-24.04
+        steps:
+            - uses: docker/setup-buildx-action@v3
+            - uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ github.token }}
+            - name: Extract metadata (tags, labels) for Docker
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: ghcr.io/superstormer/python2
+            - uses: docker/build-push-action@v6
+              with:
+                  push: true
+                  file: ./python2.Dockerfile
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  outputs: type=docker,dest=/tmp/image.tar
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: image
+                  path: /tmp/image.tar
+    publish-volatility2:
+        runs-on: ubuntu-24.04
+        steps:
+            - uses: docker/setup-buildx-action@v3
+            - name: Download artifact
+              uses: actions/download-artifact@v4
+              with:
+                  name: image
+                  path: /tmp
+
+            - name: Load image
+              run: |
+                  docker load --input /tmp/image.tar
+                  docker image ls -a
+            - uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ github.token }}
+            - name: Extract metadata (tags, labels) for Docker
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: ghcr.io/superstormer/volatility2
+            - uses: docker/build-push-action@v6
+              with:
+                  push: true
+                  file: ./volatility2.Dockerfile
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
