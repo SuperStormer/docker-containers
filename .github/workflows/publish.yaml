@@ -7,8 +7,11 @@ permissions:
     packages: write
     contents: read
 jobs:
-    publish-python2:
+    publish:
         runs-on: ubuntu-24.04
+        strategy:
+            matrix:
+                image: [python2, volatility2]
         steps:
             - uses: docker/setup-buildx-action@v3
             - uses: docker/login-action@v3
@@ -20,12 +23,12 @@ jobs:
               id: meta
               uses: docker/metadata-action@v5
               with:
-                  images: ghcr.io/superstormer/python2
+                  images: ghcr.io/superstormer/${{ matrix.image }}
             - uses: docker/build-push-action@v6
               with:
                   push: true
-                  file: ./python2.Dockerfile
-                  tags: ghcr.io/superstormer/python2,ghcr.io/superstormer/python2:sha-${{ github.sha }}
+                  file: ./${{ matrix.image }}.Dockerfile
+                  tags: ghcr.io/superstormer/${{ matrix.image }},ghcr.io/superstormer/${{ matrix.image }}:sha-${{ github.sha }}
                   labels: ${{ steps.meta.outputs.labels }}
                   outputs: type=docker,dest=/tmp/image.tar
                   cache-from: type=gha
@@ -35,35 +38,3 @@ jobs:
               with:
                   name: image
                   path: /tmp/image.tar
-    publish-volatility2:
-        runs-on: ubuntu-24.04
-        needs: publish-python2
-        steps:
-            - uses: docker/setup-buildx-action@v3
-            - name: Download artifact
-              uses: actions/download-artifact@v4
-              with:
-                  name: image
-                  path: /tmp
-
-            - name: Load image
-              run: |
-                  docker load --input /tmp/image.tar
-            - uses: docker/login-action@v3
-              with:
-                  registry: ghcr.io
-                  username: ${{ github.actor }}
-                  password: ${{ github.token }}
-            - name: Extract metadata (tags, labels) for Docker
-              id: meta
-              uses: docker/metadata-action@v5
-              with:
-                  images: ghcr.io/superstormer/volatility2
-            - uses: docker/build-push-action@v6
-              with:
-                  push: true
-                  file: ./volatility2.Dockerfile
-                  tags: ghcr.io/superstormer/volatility2,ghcr.io/superstormer/volatility2:sha-${{ github.sha }}
-                  labels: ${{ steps.meta.outputs.labels }}
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
